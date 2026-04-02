@@ -8,8 +8,8 @@ import {
   Pin,
 } from '@vis.gl/react-google-maps'
 import { Shop } from '@/lib/types'
-import FilterBar, { FilterState, ShopCategory } from './FilterBar'
-import { ShopInfoWindow, ShopBottomSheet } from './ShopPopup'
+import FilterBar, { FilterState, ShopCategory } from '@/components/FilterBar'
+import { ShopInfoWindow, ShopBottomSheet } from '@/components/ShopPopup'
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
