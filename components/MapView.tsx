@@ -51,7 +51,7 @@ function applyFilters(shops: Shop[], filters: FilterState): Shop[] {
       if (!hit) return false
     }
     if (filters.eras.length > 0) {
-      const hasEra = filters.eras.some(era => shop.eras?.includes(era))
+     const hasEra = filters.eras.some(era => shop.eras?.includes(era as any))
       if (!hasEra) return false
     }
     return true

@@ -8,7 +8,7 @@ export interface FilterState {
   category: ShopCategory
   search: string
   maxDistance: number
-  eras: string[]
+  eras: any[]
 }
 
 const CATEGORIES: { id: ShopCategory; label: string; emoji: string }[] = [
