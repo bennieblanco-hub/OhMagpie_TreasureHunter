@@ -68,7 +68,7 @@ function MapPanel() {
   return (
     <div className="flex gap-3 h-[calc(100vh-130px)]">
       <div className="flex-1 min-w-0 rounded-xl overflow-hidden">
-        <MapView selectedShop={selectedShop} onSelectShop={setSelectedShop} shops={shops} filterDistance={distFilter} />
+        <MapView selectedShop={selectedShop} onSelectShop={setSelectedShop} shops={shops} />
       </div>
       <div className="w-72 flex flex-col gap-2 flex-shrink-0">
         <div className="rounded-xl p-2.5 space-y-1.5" style={{ background: 'var(--color-surface)' }}>
