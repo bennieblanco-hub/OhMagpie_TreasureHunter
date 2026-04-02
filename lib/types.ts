@@ -28,6 +28,7 @@ export interface Shop {
   openingHours?: string
   notes: string
   verified: boolean // whether contact info has been verified
+  category?: 'jeweller' | 'antique-shop' | 'antique-market' | 'dealer' | 'auction' | 'other'
 }
 
 export interface SavedSearch {
