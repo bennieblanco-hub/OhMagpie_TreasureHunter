@@ -65,11 +65,11 @@ function MapPanel() {
   return !q || s.name.toLowerCase().includes(q) || s.town.toLowerCase().includes(q)
 })
   return (
-    <div className="flex gap-3 h-[calc(100vh-130px)]">
+    <div className="flex gap-3 h-[calc(100dvh-130px)] sm:h-[calc(100vh-130px)]">
       <div className="flex-1 min-w-0 rounded-xl overflow-hidden">
         <MapView selectedShop={selectedShop} onSelectShop={setSelectedShop} shops={shops} />
       </div>
-      <div className="w-72 flex flex-col gap-2 flex-shrink-0">
+      <div className="hidden sm:flex w-72 flex-col gap-2 flex-shrink-0">
         <div className="rounded-xl p-2.5 space-y-1.5" style={{ background: 'var(--color-surface)' }}>
           <input type="text" placeholder="Search shops…" value={listQuery} onChange={e => setListQuery(e.target.value)}
             className="w-full px-2.5 py-1.5 rounded-lg border text-[12px] outline-none"
