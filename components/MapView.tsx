@@ -8,8 +8,8 @@ import {
   Pin,
 } from '@vis.gl/react-google-maps'
 import { Shop } from '@/lib/types'
-import FilterBar, { FilterState, ShopCategory } from '@/components/FilterBar'
-import { ShopInfoWindow, ShopBottomSheet } from '@/components/ShopPopup'
+import FilterBar, { FilterState, ShopCategory } from './FilterBar'
+import { ShopInfoWindow, ShopBottomSheet } from './ShopPopup'
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
@@ -41,7 +41,8 @@ function markerColor(shop: Shop & { category?: ShopCategory }): string {
 function applyFilters(shops: Shop[], filters: FilterState): Shop[] {
   return shops.filter(shop => {
     if (filters.maxDistance && shop.distance > filters.maxDistance) return false
-    if (filters.category !== 'all' && (shop as any).category !== filters.category) return false
+    // Only filter by category if the shop has a category set — uncategorised shops show everywhere
+    if (filters.category !== 'all' && (shop as any).category && (shop as any).category !== filters.category) return false
     if (filters.search) {
       const q = filters.search.toLowerCase()
       const hit =
@@ -51,7 +52,7 @@ function applyFilters(shops: Shop[], filters: FilterState): Shop[] {
       if (!hit) return false
     }
     if (filters.eras.length > 0) {
-     const hasEra = filters.eras.some(era => shop.eras?.includes(era as any))
+      const hasEra = filters.eras.some(era => shop.eras?.includes(era))
       if (!hasEra) return false
     }
     return true
@@ -264,7 +265,13 @@ export default function MapView({ selectedShop, onSelectShop, shops }: MapViewPr
 
   return (
     <APIProvider apiKey={apiKey}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        // 100dvh respects the mobile browser chrome (address bar shrinking etc.)
+        // falls back to 100% for desktop where parent controls height
+        height: isMobile ? '100dvh' : '100%',
+      }}>
 
         {/* Filter bar */}
         <FilterBar
@@ -285,14 +292,15 @@ export default function MapView({ selectedShop, onSelectShop, shops }: MapViewPr
           <ViewToggle mode={viewMode} onChange={setViewMode} isMobile={isMobile} />
         </div>
 
-        {/* Content area */}
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
+        {/* Content area — relative so map can go absolute inside */}
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative', minHeight: 0 }}>
 
           {/* Map pane */}
           {(viewMode === 'map' || viewMode === 'split') && (
             <div style={{
               flex: viewMode === 'split' ? '0 0 60%' : '1 1 100%',
-              height: '100%',
+              position: 'relative',
+              minHeight: 0,
               borderRadius: viewMode === 'map' ? '0 0 12px 12px' : '0 0 0 12px',
               overflow: 'hidden',
             }}>
@@ -304,7 +312,7 @@ export default function MapView({ selectedShop, onSelectShop, shops }: MapViewPr
           {(viewMode === 'list' || viewMode === 'split') && (
             <div style={{
               flex: viewMode === 'split' ? '0 0 40%' : '1 1 100%',
-              height: '100%',
+              minHeight: 0,
               display: 'flex',
               flexDirection: 'column',
               borderLeft: viewMode === 'split' ? '0.5px solid var(--color-border, #e5e5e5)' : 'none',
