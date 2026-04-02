@@ -1,31 +1,21 @@
 'use client'
 
-import { useState } from 'react'
-
-export type ShopCategory = 'all' | 'jeweller' | 'antique-shop' | 'antique-market' | 'dealer' | 'auction' | 'other'
+export type ShopType = 'all' | 'general' | 'specialist' | 'market'
 
 export interface FilterState {
-  category: ShopCategory
+  shopType: ShopType
   search: string
   maxDistance: number
-  eras: any[]
 }
 
-const CATEGORIES: { id: ShopCategory; label: string; emoji: string }[] = [
-  { id: 'all',            label: 'All',            emoji: '🗺' },
-  { id: 'jeweller',       label: 'Jewellers',      emoji: '💎' },
-  { id: 'antique-shop',   label: 'Antique shops',  emoji: '🏺' },
-  { id: 'antique-market', label: 'Markets',        emoji: '🏛' },
-  { id: 'dealer',         label: 'Dealers',        emoji: '🔍' },
-  { id: 'auction',        label: 'Auction houses', emoji: '🔨' },
+const TYPES: { id: ShopType; label: string; emoji: string }[] = [
+  { id: 'all',        label: 'All',           emoji: '🗺' },
+  { id: 'specialist', label: 'Jewellers',     emoji: '💎' },
+  { id: 'general',    label: 'Antique shops', emoji: '🏺' },
+  { id: 'market',     label: 'Markets',       emoji: '🏛' },
 ]
 
 const DISTANCE_PRESETS = [30, 60, 100, 200]
-
-const ALL_ERAS = [
-  'Georgian', 'Victorian', 'Edwardian', 'Art Nouveau',
-  'Art Deco', 'Mid-Century', 'Retro', 'Contemporary',
-]
 
 interface FilterBarProps {
   filters: FilterState
@@ -35,22 +25,12 @@ interface FilterBarProps {
 }
 
 export default function FilterBar({ filters, onChange, totalCount, visibleCount }: FilterBarProps) {
-  const [showEras, setShowEras] = useState(false)
-
   const set = (partial: Partial<FilterState>) => onChange({ ...filters, ...partial })
 
-  const toggleEra = (era: string) => {
-    const next = filters.eras.includes(era)
-      ? filters.eras.filter(e => e !== era)
-      : [...filters.eras, era]
-    set({ eras: next })
-  }
-
   const hasActiveFilters =
-    filters.category !== 'all' ||
+    filters.shopType !== 'all' ||
     filters.search.trim() !== '' ||
-    filters.maxDistance < 200 ||
-    filters.eras.length > 0
+    filters.maxDistance < 200
 
   return (
     <div style={{
@@ -63,12 +43,13 @@ export default function FilterBar({ filters, onChange, totalCount, visibleCount 
       zIndex: 10,
     }}>
 
-      {/* Row 1: search + count */}
+      {/* Search + count */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: 1 }}>
           <span style={{
-            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-            fontSize: 13, pointerEvents: 'none', opacity: 0.5,
+            position: 'absolute', left: 10, top: '50%',
+            transform: 'translateY(-50%)', fontSize: 13,
+            pointerEvents: 'none', opacity: 0.4,
           }}>🔍</span>
           <input
             type="text"
@@ -83,35 +64,25 @@ export default function FilterBar({ filters, onChange, totalCount, visibleCount 
               fontSize: 13,
               fontFamily: 'inherit',
               background: 'var(--color-background, #fafafa)',
+              color: 'inherit',
               outline: 'none',
             }}
           />
         </div>
 
-        <div style={{
-          fontSize: 11,
-          color: 'var(--color-muted, #888)',
-          whiteSpace: 'nowrap',
-          flexShrink: 0,
-        }}>
-          {visibleCount === totalCount
-            ? `${totalCount} shops`
-            : `${visibleCount} / ${totalCount}`}
+        <div style={{ fontSize: 11, color: 'var(--color-muted, #888)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          {visibleCount === totalCount ? `${totalCount} shops` : `${visibleCount} / ${totalCount}`}
         </div>
 
         {hasActiveFilters && (
           <button
-            onClick={() => onChange({ category: 'all', search: '', maxDistance: 200, eras: [] })}
+            onClick={() => onChange({ shopType: 'all', search: '', maxDistance: 200 })}
             style={{
-              fontSize: 11,
-              padding: '4px 8px',
+              fontSize: 11, padding: '4px 8px',
               border: '0.5px solid var(--color-border, #e5e5e5)',
-              borderRadius: 6,
-              background: 'transparent',
-              cursor: 'pointer',
-              color: 'var(--color-muted, #888)',
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
+              borderRadius: 6, background: 'transparent',
+              cursor: 'pointer', color: 'var(--color-muted, #888)',
+              whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'inherit',
             }}
           >
             Clear
@@ -119,49 +90,39 @@ export default function FilterBar({ filters, onChange, totalCount, visibleCount 
         )}
       </div>
 
-      {/* Row 2: category pills (horizontal scroll on mobile) */}
-      <div style={{
-        display: 'flex',
-        gap: 6,
-        overflowX: 'auto',
-        paddingBottom: 2,
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none',
-      }}>
-        {CATEGORIES.map(cat => (
+      {/* Type pills */}
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
+        {TYPES.map(t => (
           <button
-            key={cat.id}
-            onClick={() => set({ category: cat.id })}
+            key={t.id}
+            onClick={() => set({ shopType: t.id })}
             style={{
               flexShrink: 0,
-              padding: '5px 11px',
+              padding: '5px 12px',
               borderRadius: 20,
-              border: filters.category === cat.id
+              border: filters.shopType === t.id
                 ? '1.5px solid #1D9E75'
                 : '0.5px solid var(--color-border, #e5e5e5)',
-              background: filters.category === cat.id ? '#1D9E75' : 'transparent',
-              color: filters.category === cat.id ? '#fff' : 'var(--color-text, #333)',
+              background: filters.shopType === t.id ? '#1D9E75' : 'transparent',
+              color: filters.shopType === t.id ? '#fff' : 'var(--color-text, #333)',
               fontSize: 12,
               fontFamily: 'inherit',
               cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
+              display: 'flex', alignItems: 'center', gap: 5,
               transition: 'all 0.15s',
             }}
           >
-            <span>{cat.emoji}</span>
-            <span>{cat.label}</span>
+            <span>{t.emoji}</span>
+            <span>{t.label}</span>
           </button>
         ))}
       </div>
 
-      {/* Row 3: distance + era toggle */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      {/* Distance presets */}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <span style={{ fontSize: 11, color: 'var(--color-muted, #888)', whiteSpace: 'nowrap' }}>
           Within
         </span>
-
         {DISTANCE_PRESETS.map(d => (
           <button
             key={d}
@@ -183,61 +144,7 @@ export default function FilterBar({ filters, onChange, totalCount, visibleCount 
             {d}mi
           </button>
         ))}
-
-        <div style={{ flex: 1 }} />
-
-        <button
-          onClick={() => setShowEras(v => !v)}
-          style={{
-            fontSize: 11,
-            padding: '3px 9px',
-            border: filters.eras.length > 0
-              ? '1.5px solid #1D9E75'
-              : '0.5px solid var(--color-border, #e5e5e5)',
-            borderRadius: 6,
-            background: filters.eras.length > 0 ? '#edf8f4' : 'transparent',
-            color: filters.eras.length > 0 ? '#1D9E75' : 'var(--color-muted, #888)',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Era {filters.eras.length > 0 ? `(${filters.eras.length})` : '▾'}
-        </button>
       </div>
-
-      {/* Era picker — expandable */}
-      {showEras && (
-        <div style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 5,
-          paddingTop: 4,
-          borderTop: '0.5px solid var(--color-border, #e5e5e5)',
-        }}>
-          {ALL_ERAS.map(era => (
-            <button
-              key={era}
-              onClick={() => toggleEra(era)}
-              style={{
-                padding: '3px 10px',
-                borderRadius: 20,
-                border: filters.eras.includes(era)
-                  ? '1.5px solid #B8860B'
-                  : '0.5px solid var(--color-border, #e5e5e5)',
-                background: filters.eras.includes(era) ? '#fdf8ee' : 'transparent',
-                color: filters.eras.includes(era) ? '#B8860B' : 'var(--color-muted, #888)',
-                fontSize: 11,
-                fontFamily: 'inherit',
-                cursor: 'pointer',
-                transition: 'all 0.12s',
-              }}
-            >
-              {era}
-            </button>
-          ))}
-        </div>
-      )}
 
     </div>
   )
