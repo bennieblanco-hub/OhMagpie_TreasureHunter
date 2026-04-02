@@ -186,7 +186,7 @@ export async function buildProfileFromDB(): Promise<PreferenceProfile> {
   }
   for (const [era, counts] of Object.entries(eraCounts)) {
     const total = counts.pos + counts.neg
-    if (total > 0) profile.eraScores[era as Era] = counts.pos / total
+    if (total > 0) (profile.eraScores as Record<string, number>)[era] = counts.pos / total
   }
 
   // Price range from saved/watched
