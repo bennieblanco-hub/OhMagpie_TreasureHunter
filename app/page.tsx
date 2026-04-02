@@ -53,18 +53,17 @@ function MapPanel() {
   const [loading, setLoading] = useState(true)
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null)
   const [listQuery, setListQuery] = useState('')
-  const [listEra, setListEra] = useState('')
+  const [listType, setListType] = useState('')
   const [distFilter, setDistFilter] = useState<number | undefined>(undefined)
 
   useEffect(() => { getShops().then(d => { setShops(d); setLoading(false) }) }, [])
 
   const filtered = shops.filter(s => {
-    if (distFilter && s.distance > distFilter) return false
-    if (listEra && !s.eras.includes(listEra as Era)) return false
-    const q = listQuery.toLowerCase()
-    return !q || s.name.toLowerCase().includes(q) || s.town.toLowerCase().includes(q)
-  })
-
+  if (distFilter && s.distance > distFilter) return false
+  if (listType && (s as any).type !== listType) return false
+  const q = listQuery.toLowerCase()
+  return !q || s.name.toLowerCase().includes(q) || s.town.toLowerCase().includes(q)
+})
   return (
     <div className="flex gap-3 h-[calc(100vh-130px)]">
       <div className="flex-1 min-w-0 rounded-xl overflow-hidden">
@@ -76,12 +75,14 @@ function MapPanel() {
             className="w-full px-2.5 py-1.5 rounded-lg border text-[12px] outline-none"
             style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }} />
           <div className="flex gap-1.5">
-            <select value={listEra} onChange={e => setListEra(e.target.value)}
-              className="flex-1 px-2 py-1.5 rounded-lg border text-[11px] outline-none"
-              style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
-              <option value="">All eras</option>
-              {['Victorian','Georgian','Edwardian','Art Deco','Art Nouveau','Modern'].map(e => <option key={e}>{e}</option>)}
-            </select>
+            <select value={listType} onChange={e => setListType(e.target.value)}
+  className="flex-1 px-2 py-1.5 rounded-lg border text-[11px] outline-none"
+  style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
+  <option value="">All types</option>
+  <option value="specialist">💎 Jewellers</option>
+  <option value="general">🏺 Antique shops</option>
+  <option value="market">🏛 Markets</option>
+</select>
             <select value={distFilter ?? ''} onChange={e => setDistFilter(e.target.value ? parseInt(e.target.value) : undefined)}
               className="flex-1 px-2 py-1.5 rounded-lg border text-[11px] outline-none"
               style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
@@ -118,9 +119,6 @@ function MapPanel() {
                   {shop.phone && <div>📞 {shop.phone}</div>}
                   {shop.email && <div>✉️ {shop.email}</div>}
                   {shop.openingHours && <div>🕐 {shop.openingHours}</div>}
-                  <div className="mt-1 pt-1 border-t" style={{ borderColor: 'var(--color-border)' }}>
-                    {shop.eras.map(e => <EraTag key={e} era={e} />)}
-                  </div>
                   {!shop.verified && <div className="mt-1" style={{ color: '#B8860B' }}>⚠ Contact unverified</div>}
                 </div>
               )}
