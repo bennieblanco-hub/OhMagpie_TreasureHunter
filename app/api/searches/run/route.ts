@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     if (newFinds.length > 0) {
       const rows = newFinds.map(f => ({
         title:       f.title,
-        price:       f.price,
+        price:       Math.round(f.price),
         platform:    f.platform,
         era:         'General',
         status:      'New',

@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
 
       if (newFinds.length > 0) {
         await sb.from('finds').insert(newFinds.map(f => ({
-          title: f.title, price: f.price, platform: f.platform, era: 'General',
+          title: f.title, price: Math.round(f.price), platform: f.platform, era: 'General',
           status: 'New', image_url: f.imageUrl, url: f.url,
           found_at: new Date().toISOString(), search_name: search.name,
           description: f.condition, seller: f.seller, condition: f.condition,
