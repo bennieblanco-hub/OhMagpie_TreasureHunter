@@ -7,7 +7,6 @@ export async function getShops(): Promise<Shop[]> {
   const pageSize = 1000
   let from = 0
 
-  // Paginate through all shops — Supabase default limit is 1000
   while (true) {
     const { data, error } = await supabase
       .from('shops')
@@ -101,15 +100,15 @@ export async function getSearches(): Promise<SavedSearch[]> {
   if (error) { console.error('getSearches:', error); return [] }
 
   return data.map(row => ({
-    id:            row.id,
-    name:          row.name,
-    keywords:      row.keywords ?? [],
-    platforms:     row.platforms ?? [],
-    minPrice:      row.min_price,
-    maxPrice:      row.max_price,
-    active:        row.active,
-    lastRun:       row.last_run ? new Date(row.last_run).toLocaleDateString() : undefined,
-    resultsToday:  row.results_today ?? 0,
+    id:           row.id,
+    name:         row.name,
+    keywords:     row.keywords ?? [],
+    platforms:    row.platforms ?? [],
+    minPrice:     row.min_price,
+    maxPrice:     row.max_price,
+    active:       row.active,
+    lastRun:      row.last_run ? new Date(row.last_run).toLocaleDateString() : undefined,
+    resultsToday: row.results_today ?? 0,
   }))
 }
 
@@ -120,6 +119,70 @@ export async function toggleSearch(id: number, active: boolean): Promise<void> {
     .eq('id', id)
 
   if (error) console.error('toggleSearch:', error)
+}
+
+export async function addSearch(search: {
+  name: string
+  keywords: string[]
+  platforms: string[]
+  minPrice: number
+  maxPrice: number
+}): Promise<SavedSearch | null> {
+  const { data, error } = await supabase
+    .from('searches')
+    .insert({
+      name:      search.name,
+      keywords:  search.keywords,
+      platforms: search.platforms,
+      min_price: search.minPrice,
+      max_price: search.maxPrice,
+      active:    true,
+    })
+    .select()
+    .single()
+
+  if (error) { console.error('addSearch:', error); return null }
+
+  return {
+    id:           data.id,
+    name:         data.name,
+    keywords:     data.keywords ?? [],
+    platforms:    data.platforms ?? [],
+    minPrice:     data.min_price,
+    maxPrice:     data.max_price,
+    active:       data.active,
+    resultsToday: 0,
+  }
+}
+
+export async function updateSearch(id: number, search: {
+  name: string
+  keywords: string[]
+  platforms: string[]
+  minPrice: number
+  maxPrice: number
+}): Promise<void> {
+  const { error } = await supabase
+    .from('searches')
+    .update({
+      name:      search.name,
+      keywords:  search.keywords,
+      platforms: search.platforms,
+      min_price: search.minPrice,
+      max_price: search.maxPrice,
+    })
+    .eq('id', id)
+
+  if (error) console.error('updateSearch:', error)
+}
+
+export async function deleteSearch(id: number): Promise<void> {
+  const { error } = await supabase
+    .from('searches')
+    .delete()
+    .eq('id', id)
+
+  if (error) console.error('deleteSearch:', error)
 }
 
 // ─── INTERACTIONS ─────────────────────────────────────────────────────────────
@@ -159,7 +222,7 @@ export async function getInteractionsDB(): Promise<Interaction[]> {
   }))
 }
 
-// ─── PREFERENCE PROFILE (built from interactions) ─────────────────────────────
+// ─── PREFERENCE PROFILE ───────────────────────────────────────────────────────
 export async function buildProfileFromDB(): Promise<PreferenceProfile> {
   const interactions = await getInteractionsDB()
 
@@ -176,7 +239,6 @@ export async function buildProfileFromDB(): Promise<PreferenceProfile> {
     lastUpdated: new Date().toISOString(),
   }
 
-  // Build era scores
   const eraCounts: Record<string, { pos: number; neg: number }> = {}
   for (const i of interactions) {
     if (!i.findEra) continue
@@ -189,7 +251,6 @@ export async function buildProfileFromDB(): Promise<PreferenceProfile> {
     if (total > 0) (profile.eraScores as Record<string, number>)[era] = counts.pos / total
   }
 
-  // Price range from saved/watched
   const positive = interactions
     .filter(i => i.action === 'save' || i.action === 'watch')
     .map(i => i.findPrice)

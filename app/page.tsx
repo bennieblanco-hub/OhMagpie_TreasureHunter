@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { FINDS as SEED_FINDS } from '@/lib/data'
 import { Shop, Find, SavedSearch, FindStatus, Era, PreferenceProfile } from '@/lib/types'
-import { getShops, getFinds, getSearches, updateFindStatus, recordInteractionDB, buildProfileFromDB, toggleSearch } from '@/lib/db'
+import { getShops, getFinds, getSearches, updateFindStatus, recordInteractionDB, buildProfileFromDB, toggleSearch, addSearch, updateSearch, deleteSearch } from '@/lib/db'
 import { getProfile, recordInteraction, seedProfileFromFinds, scoreFindLocally } from '@/lib/preferences'
 import Lightbox from '@/components/Lightbox'
 
@@ -48,6 +48,8 @@ function StatusBadge({ status }: { status: FindStatus }) {
   return <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${styles[status]}`}>{status}</span>
 }
 
+// ─── MAP PANEL ────────────────────────────────────────────────────────────────
+
 function MapPanel() {
   const [shops, setShops] = useState<Shop[]>([])
   const [loading, setLoading] = useState(true)
@@ -59,11 +61,12 @@ function MapPanel() {
   useEffect(() => { getShops().then(d => { setShops(d); setLoading(false) }) }, [])
 
   const filtered = shops.filter(s => {
-  if (distFilter && s.distance > distFilter) return false
-  if (listType && (s as any).type !== listType) return false
-  const q = listQuery.toLowerCase()
-  return !q || s.name.toLowerCase().includes(q) || s.town.toLowerCase().includes(q)
-})
+    if (distFilter && s.distance > distFilter) return false
+    if (listType && (s as any).type !== listType) return false
+    const q = listQuery.toLowerCase()
+    return !q || s.name.toLowerCase().includes(q) || s.town.toLowerCase().includes(q)
+  })
+
   return (
     <div className="flex gap-3 h-[calc(100dvh-130px)] sm:h-[calc(100vh-130px)]">
       <div className="flex-1 min-w-0 rounded-xl overflow-hidden">
@@ -76,13 +79,13 @@ function MapPanel() {
             style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }} />
           <div className="flex gap-1.5">
             <select value={listType} onChange={e => setListType(e.target.value)}
-  className="flex-1 px-2 py-1.5 rounded-lg border text-[11px] outline-none"
-  style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
-  <option value="">All types</option>
-  <option value="specialist">💎 Jewellers</option>
-  <option value="general">🏺 Antique shops</option>
-  <option value="market">🏛 Markets</option>
-</select>
+              className="flex-1 px-2 py-1.5 rounded-lg border text-[11px] outline-none"
+              style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
+              <option value="">All types</option>
+              <option value="specialist">💎 Jewellers</option>
+              <option value="general">🏺 Antique shops</option>
+              <option value="market">🏛 Markets</option>
+            </select>
             <select value={distFilter ?? ''} onChange={e => setDistFilter(e.target.value ? parseInt(e.target.value) : undefined)}
               className="flex-1 px-2 py-1.5 rounded-lg border text-[11px] outline-none"
               style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
@@ -107,17 +110,17 @@ function MapPanel() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="text-[12px] font-medium truncate">{shop.name}</div>
-                  <div className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--color-muted)' }}>{shop.town} · {shop.type}</div>
+                  <div className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--color-muted)' }}>{shop.town} · {(shop as any).type}</div>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <div className="text-[11px] font-medium">{shop.distance}mi</div>
-                  <div className="mt-1 ml-auto rounded-full" style={{ width:6, height:6, background: shop.distance<=30?'#1D9E75':shop.distance<=80?'#B8860B':'#9e9b93' }} />
+                  <div className="mt-1 ml-auto rounded-full" style={{ width: 6, height: 6, background: shop.distance <= 30 ? '#1D9E75' : shop.distance <= 80 ? '#B8860B' : '#9e9b93' }} />
                 </div>
               </div>
               {selectedShop?.id === shop.id && (
                 <div className="mt-2 pt-2 border-t text-[10px] space-y-0.5" style={{ borderColor: 'var(--color-border)', color: 'var(--color-muted)' }}>
-                  {shop.phone && <div>📞 {shop.phone}</div>}
-                  {shop.email && <div>✉️ {shop.email}</div>}
+                  {shop.phone && <div>📞 <a href={`tel:${shop.phone}`} style={{ color: '#1D9E75' }}>{shop.phone}</a></div>}
+                  {shop.email && <div>✉️ <a href={`mailto:${shop.email}`} style={{ color: '#1D9E75' }}>{shop.email}</a></div>}
                   {shop.openingHours && <div>🕐 {shop.openingHours}</div>}
                   {!shop.verified && <div className="mt-1" style={{ color: '#B8860B' }}>⚠ Contact unverified</div>}
                 </div>
@@ -126,14 +129,16 @@ function MapPanel() {
           ))}
         </div>
         <div className="rounded-xl p-2.5 text-[10px] space-y-1" style={{ background: 'var(--color-surface)', color: 'var(--color-muted)' }}>
-          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background:'#1D9E75', display:'inline-block' }} />Under 30 mi</div>
-          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background:'#B8860B', display:'inline-block' }} />30–80 mi</div>
-          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background:'#6B6A65', display:'inline-block' }} />80+ mi</div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: '#1D9E75', display: 'inline-block' }} />Under 30 mi</div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: '#B8860B', display: 'inline-block' }} />30–80 mi</div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: '#6B6A65', display: 'inline-block' }} />80+ mi</div>
         </div>
       </div>
     </div>
   )
 }
+
+// ─── FINDS PANEL ──────────────────────────────────────────────────────────────
 
 function FindsPanel() {
   const [finds, setFinds] = useState<Find[]>([])
@@ -176,10 +181,10 @@ function FindsPanel() {
       {lightbox && <Lightbox find={lightbox} onClose={() => setLightbox(null)} />}
       <div className="flex items-center justify-between mb-4">
         <div className="flex gap-1.5 flex-wrap">
-          {(['all','New','Watching','Saved','Pass'] as const).map(f => (
+          {(['all', 'New', 'Watching', 'Saved', 'Pass'] as const).map(f => (
             <button key={f} onClick={() => setStatusFilter(f)} className="px-3 py-1 rounded-full text-[11px] border"
-              style={{ borderColor: statusFilter===f?'var(--color-text)':'var(--color-border)', background: statusFilter===f?'var(--color-surface)':'transparent', color: statusFilter===f?'var(--color-text)':'var(--color-muted)' }}>
-              {f==='all'?`All (${finds.length})`:`${f} (${finds.filter(x=>x.status===f).length})`}
+              style={{ borderColor: statusFilter === f ? 'var(--color-text)' : 'var(--color-border)', background: statusFilter === f ? 'var(--color-surface)' : 'transparent', color: statusFilter === f ? 'var(--color-text)' : 'var(--color-muted)' }}>
+              {f === 'all' ? `All (${finds.length})` : `${f} (${finds.filter(x => x.status === f).length})`}
             </button>
           ))}
         </div>
@@ -204,14 +209,14 @@ function FindsPanel() {
               </div>
               {find.interestReason && <p className="text-[11px] mb-2.5 italic" style={{ color: 'var(--color-muted)' }}>{find.interestReason}</p>}
               <div className="flex gap-1.5">
-                {(['save','watch','pass'] as const).map(action => {
-                  const isActive = (action==='save'&&find.status==='Saved')||(action==='watch'&&find.status==='Watching')||(action==='pass'&&find.status==='Pass')
-                  const c: Record<string,string> = { save:'#1D9E75', watch:'#B8860B', pass:'#9e9b93' }
+                {(['save', 'watch', 'pass'] as const).map(action => {
+                  const isActive = (action === 'save' && find.status === 'Saved') || (action === 'watch' && find.status === 'Watching') || (action === 'pass' && find.status === 'Pass')
+                  const c: Record<string, string> = { save: '#1D9E75', watch: '#B8860B', pass: '#9e9b93' }
                   return (
                     <button key={action} onClick={() => handleAction(find, action)}
                       className="flex-1 py-1 rounded-lg text-[11px] border transition-colors"
-                      style={{ borderColor: isActive?c[action]:'var(--color-border)', background: isActive?`${c[action]}18`:'transparent', color: isActive?c[action]:'var(--color-muted)', fontWeight: isActive?500:400 }}>
-                      {action.charAt(0).toUpperCase()+action.slice(1)}
+                      style={{ borderColor: isActive ? c[action] : 'var(--color-border)', background: isActive ? `${c[action]}18` : 'transparent', color: isActive ? c[action] : 'var(--color-muted)', fontWeight: isActive ? 500 : 400 }}>
+                      {action.charAt(0).toUpperCase() + action.slice(1)}
                     </button>
                   )
                 })}
@@ -224,141 +229,372 @@ function FindsPanel() {
   )
 }
 
+// ─── SEARCHES PANEL ───────────────────────────────────────────────────────────
+
+const PLATFORMS = ['eBay', 'Etsy']
+
+interface SearchFormState {
+  name: string
+  keywords: string[]
+  keywordInput: string
+  platforms: string[]
+  minPrice: string
+  maxPrice: string
+}
+
+const EMPTY_FORM: SearchFormState = {
+  name: '',
+  keywords: [],
+  keywordInput: '',
+  platforms: ['eBay'],
+  minPrice: '0',
+  maxPrice: '500',
+}
+
+function SearchForm({
+  initial,
+  onSave,
+  onCancel,
+}: {
+  initial?: SearchFormState
+  onSave: (form: SearchFormState) => void
+  onCancel: () => void
+}) {
+  const [form, setForm] = useState<SearchFormState>(initial ?? EMPTY_FORM)
+  const set = (partial: Partial<SearchFormState>) => setForm(f => ({ ...f, ...partial }))
+
+  const addKeyword = () => {
+    const kw = form.keywordInput.trim()
+    if (!kw || form.keywords.includes(kw)) return
+    set({ keywords: [...form.keywords, kw], keywordInput: '' })
+  }
+
+  const removeKeyword = (kw: string) =>
+    set({ keywords: form.keywords.filter(k => k !== kw) })
+
+  const togglePlatform = (p: string) => {
+    const next = form.platforms.includes(p)
+      ? form.platforms.filter(x => x !== p)
+      : [...form.platforms, p]
+    if (next.length > 0) set({ platforms: next })
+  }
+
+  const valid = form.name.trim() !== '' && form.keywords.length > 0
+
+  return (
+    <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+
+      <div>
+        <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--color-muted)' }}>Group name</label>
+        <input
+          type="text"
+          placeholder="e.g. Victorian Gold Chains"
+          value={form.name}
+          onChange={e => set({ name: e.target.value })}
+          className="w-full px-3 py-2 rounded-lg border text-[13px] outline-none"
+          style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+        />
+      </div>
+
+      <div>
+        <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--color-muted)' }}>Search terms</label>
+        <div className="flex gap-2 mb-2">
+          <input
+            type="text"
+            placeholder="e.g. 19th century trombone link gold chain"
+            value={form.keywordInput}
+            onChange={e => set({ keywordInput: e.target.value })}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addKeyword() } }}
+            className="flex-1 px-3 py-2 rounded-lg border text-[12px] outline-none"
+            style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+          />
+          <button onClick={addKeyword}
+            className="px-3 py-2 rounded-lg text-[12px] font-medium"
+            style={{ background: '#1D9E75', color: '#fff' }}>
+            Add
+          </button>
+        </div>
+        {form.keywords.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {form.keywords.map(kw => (
+              <span key={kw} className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px]"
+                style={{ background: 'var(--color-bg)', border: '0.5px solid var(--color-border)', color: 'var(--color-text)' }}>
+                {kw}
+                <button onClick={() => removeKeyword(kw)} style={{ color: 'var(--color-muted)', lineHeight: 1 }}>×</button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--color-muted)' }}>Min price (£)</label>
+          <input type="number" value={form.minPrice} onChange={e => set({ minPrice: e.target.value })}
+            className="w-full px-3 py-2 rounded-lg border text-[12px] outline-none"
+            style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }} />
+        </div>
+        <div className="flex-1">
+          <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--color-muted)' }}>Max price (£)</label>
+          <input type="number" value={form.maxPrice} onChange={e => set({ maxPrice: e.target.value })}
+            className="w-full px-3 py-2 rounded-lg border text-[12px] outline-none"
+            style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }} />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-[11px] font-medium block mb-1.5" style={{ color: 'var(--color-muted)' }}>Platforms</label>
+        <div className="flex gap-2">
+          {PLATFORMS.map(p => (
+            <button key={p} onClick={() => togglePlatform(p)}
+              className="px-3 py-1.5 rounded-full text-[11px] font-medium"
+              style={{
+                background: form.platforms.includes(p) ? '#1D9E75' : 'transparent',
+                color: form.platforms.includes(p) ? '#fff' : 'var(--color-muted)',
+                border: form.platforms.includes(p) ? '1.5px solid #1D9E75' : '0.5px solid var(--color-border)',
+              }}>
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex gap-2 pt-1">
+        <button onClick={() => onSave(form)} disabled={!valid}
+          className="flex-1 py-2 rounded-lg text-[13px] font-medium"
+          style={{ background: valid ? '#1D9E75' : 'var(--color-border)', color: valid ? '#fff' : 'var(--color-muted)' }}>
+          Save group
+        </button>
+        <button onClick={onCancel}
+          className="px-4 py-2 rounded-lg text-[13px] border"
+          style={{ borderColor: 'var(--color-border)', color: 'var(--color-muted)' }}>
+          Cancel
+        </button>
+      </div>
+
+    </div>
+  )
+}
+
 function SearchesPanel() {
   const [searches, setSearches] = useState<SavedSearch[]>([])
   const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
 
   useEffect(() => { getSearches().then(d => { setSearches(d); setLoading(false) }) }, [])
 
   const handleToggle = async (id: number, active: boolean) => {
-    setSearches(prev => prev.map(s => s.id===id ? {...s, active} : s))
+    setSearches(prev => prev.map(s => s.id === id ? { ...s, active } : s))
     await toggleSearch(id, active)
+  }
+
+  const handleAdd = async (form: SearchFormState) => {
+    const saved = await addSearch({
+      name:      form.name.trim(),
+      keywords:  form.keywords,
+      platforms: form.platforms,
+      minPrice:  parseInt(form.minPrice) || 0,
+      maxPrice:  parseInt(form.maxPrice) || 500,
+    })
+    if (saved) setSearches(prev => [...prev, saved])
+    setShowForm(false)
+  }
+
+  const handleEdit = async (form: SearchFormState) => {
+    if (editingId === null) return
+    await updateSearch(editingId, {
+      name:      form.name.trim(),
+      keywords:  form.keywords,
+      platforms: form.platforms,
+      minPrice:  parseInt(form.minPrice) || 0,
+      maxPrice:  parseInt(form.maxPrice) || 500,
+    })
+    setSearches(prev => prev.map(s => s.id === editingId ? {
+      ...s,
+      name:      form.name.trim(),
+      keywords:  form.keywords,
+      platforms: form.platforms,
+      minPrice:  parseInt(form.minPrice) || 0,
+      maxPrice:  parseInt(form.maxPrice) || 500,
+    } : s))
+    setEditingId(null)
+  }
+
+  const handleDelete = async (id: number) => {
+    await deleteSearch(id)
+    setSearches(prev => prev.filter(s => s.id !== id))
   }
 
   return (
     <div>
       <div className="grid grid-cols-3 gap-2.5 mb-5">
         {[
-          { label:'Active searches',   value: searches.filter(s=>s.active).length },
-          { label:'New results today', value: searches.reduce((a,s)=>a+(s.resultsToday??0),0) },
-          { label:'Platforms',         value: 2 },
+          { label: 'Active groups',     value: searches.filter(s => s.active).length },
+          { label: 'New results today', value: searches.reduce((a, s) => a + (s.resultsToday ?? 0), 0) },
+          { label: 'Platforms',         value: 2 },
         ].map(s => (
           <div key={s.label} className="rounded-xl p-3.5" style={{ background: 'var(--color-surface)' }}>
             <div className="text-[11px] mb-1" style={{ color: 'var(--color-muted)' }}>{s.label}</div>
-            <div className="text-[22px] font-medium">{loading?'…':s.value}</div>
+            <div className="text-[22px] font-medium">{loading ? '…' : s.value}</div>
           </div>
         ))}
       </div>
+
       <div className="space-y-2">
         {searches.map(s => (
-          <div key={s.id} className="rounded-xl border p-3.5" style={{ borderColor: 'var(--color-border)' }}>
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-[13px] font-medium">{s.name}</div>
-              <div className="flex items-center gap-2">
-                {(s.resultsToday??0)>0 && <span className="text-[11px] font-medium" style={{ color:'#1D9E75' }}>{s.resultsToday} new</span>}
-                <button onClick={() => handleToggle(s.id, !s.active)}
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-medium cursor-pointer ${s.active?'bg-green-50 text-green-700':'bg-gray-100 text-gray-500'}`}>
-                  {s.active?'Running':'Paused'}
-                </button>
+          <div key={s.id}>
+            {editingId === s.id ? (
+              <SearchForm
+                initial={{
+                  name:         s.name,
+                  keywords:     s.keywords,
+                  keywordInput: '',
+                  platforms:    s.platforms,
+                  minPrice:     String(s.minPrice),
+                  maxPrice:     String(s.maxPrice),
+                }}
+                onSave={handleEdit}
+                onCancel={() => setEditingId(null)}
+              />
+            ) : (
+              <div className="rounded-xl border p-3.5" style={{ borderColor: 'var(--color-border)' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-[13px] font-medium">{s.name}</div>
+                  <div className="flex items-center gap-2">
+                    {(s.resultsToday ?? 0) > 0 && (
+                      <span className="text-[11px] font-medium" style={{ color: '#1D9E75' }}>{s.resultsToday} new</span>
+                    )}
+                    <button onClick={() => handleToggle(s.id, !s.active)}
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-medium cursor-pointer ${s.active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {s.active ? 'Running' : 'Paused'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 mb-2.5">
+                  {s.keywords.map(kw => (
+                    <span key={kw} className="px-2 py-0.5 rounded-full text-[10px]"
+                      style={{ background: 'var(--color-bg)', border: '0.5px solid var(--color-border)', color: 'var(--color-muted)' }}>
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-3 text-[11px]" style={{ color: 'var(--color-muted)' }}>
+                  <span className="font-medium" style={{ color: 'var(--color-text)' }}>£{s.minPrice}–£{s.maxPrice}</span>
+                  <span>{s.platforms.join(', ')}</span>
+                  {s.lastRun && <span>{s.lastRun}</span>}
+                  <div className="ml-auto flex gap-3">
+                    <button onClick={() => setEditingId(s.id)} style={{ color: '#1D9E75' }}>Edit</button>
+                    <button onClick={() => handleDelete(s.id)} style={{ color: 'var(--color-muted)' }}>Delete</button>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="text-[11px] font-mono mb-2.5 leading-relaxed" style={{ color:'var(--color-muted)' }}>{s.keywords.join(' · ')}</div>
-            <div className="flex items-center gap-3 text-[11px]" style={{ color:'var(--color-muted)' }}>
-              <span className="font-medium" style={{ color:'var(--color-text)' }}>£{s.minPrice}–£{s.maxPrice}</span>
-              <span>{s.platforms.join(', ')}</span>
-              {s.lastRun && <span className="ml-auto">{s.lastRun}</span>}
-            </div>
+            )}
           </div>
         ))}
-        <button className="w-full mt-1 py-2.5 rounded-xl text-[12px] border border-dashed"
-          style={{ borderColor:'var(--color-border)', color:'var(--color-muted)' }}>+ New search</button>
+
+        {showForm ? (
+          <SearchForm onSave={handleAdd} onCancel={() => setShowForm(false)} />
+        ) : (
+          <button onClick={() => setShowForm(true)}
+            className="w-full mt-1 py-2.5 rounded-xl text-[12px] border border-dashed"
+            style={{ borderColor: 'var(--color-border)', color: 'var(--color-muted)' }}>
+            + New search group
+          </button>
+        )}
       </div>
     </div>
   )
 }
+
+// ─── PROFILE PANEL ────────────────────────────────────────────────────────────
 
 function ProfilePanel() {
   const [profile, setProfile] = useState<PreferenceProfile | null>(null)
 
   useEffect(() => {
     buildProfileFromDB().then(p => {
-      if (p.totalInteractions===0) { seedProfileFromFinds(SEED_FINDS); setProfile(getProfile()) }
+      if (p.totalInteractions === 0) { seedProfileFromFinds(SEED_FINDS); setProfile(getProfile()) }
       else setProfile(p)
     })
   }, [])
 
   if (!profile) return null
 
-  const topEras = Object.entries(profile.eraScores).sort(([,a],[,b])=>b-a).slice(0,6)
-  const topGems = Object.entries(profile.gemstonePreferences).sort(([,a],[,b])=>b-a).slice(0,8)
+  const topEras = Object.entries(profile.eraScores).sort(([, a], [, b]) => b - a).slice(0, 6)
+  const topGems = Object.entries(profile.gemstonePreferences).sort(([, a], [, b]) => b - a).slice(0, 8)
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2.5">
-        {[{label:'Interactions',value:profile.totalInteractions},{label:'Saved',value:profile.savedCount},{label:'Passed',value:profile.passCount}].map(s=>(
-          <div key={s.label} className="rounded-xl p-3.5" style={{ background:'var(--color-surface)' }}>
-            <div className="text-[11px] mb-1" style={{ color:'var(--color-muted)' }}>{s.label}</div>
+        {[{ label: 'Interactions', value: profile.totalInteractions }, { label: 'Saved', value: profile.savedCount }, { label: 'Passed', value: profile.passCount }].map(s => (
+          <div key={s.label} className="rounded-xl p-3.5" style={{ background: 'var(--color-surface)' }}>
+            <div className="text-[11px] mb-1" style={{ color: 'var(--color-muted)' }}>{s.label}</div>
             <div className="text-[22px] font-medium">{s.value}</div>
           </div>
         ))}
       </div>
-      <div className="rounded-xl border p-4" style={{ borderColor:'var(--color-border)' }}>
-        <p className="text-[11px] font-medium uppercase tracking-wider mb-3" style={{ color:'var(--color-muted)' }}>Price range</p>
+      <div className="rounded-xl border p-4" style={{ borderColor: 'var(--color-border)' }}>
+        <p className="text-[11px] font-medium uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>Price range</p>
         <div className="flex items-baseline gap-2 mb-1">
           <span className="text-[22px] font-medium">£{profile.priceRange.avg}</span>
-          <span className="text-[13px]" style={{ color:'var(--color-muted)' }}>average save</span>
+          <span className="text-[13px]" style={{ color: 'var(--color-muted)' }}>average save</span>
         </div>
-        <div className="text-[12px]" style={{ color:'var(--color-muted)' }}>Range: £{profile.priceRange.min}–£{profile.priceRange.max}</div>
+        <div className="text-[12px]" style={{ color: 'var(--color-muted)' }}>Range: £{profile.priceRange.min}–£{profile.priceRange.max}</div>
       </div>
-      {topEras.length>0 && (
-        <div className="rounded-xl border p-4" style={{ borderColor:'var(--color-border)' }}>
-          <p className="text-[11px] font-medium uppercase tracking-wider mb-3" style={{ color:'var(--color-muted)' }}>Era preferences</p>
+      {topEras.length > 0 && (
+        <div className="rounded-xl border p-4" style={{ borderColor: 'var(--color-border)' }}>
+          <p className="text-[11px] font-medium uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>Era preferences</p>
           <div className="space-y-2.5">
-            {topEras.map(([era,score])=>(
+            {topEras.map(([era, score]) => (
               <div key={era}>
-                <div className="flex justify-between text-[12px] mb-1"><span><EraTag era={era}/></span><span style={{ color:'var(--color-muted)' }}>{Math.round(score*100)}%</span></div>
-                <div className="h-1.5 rounded-full" style={{ background:'var(--color-border)' }}>
-                  <div className="h-1.5 rounded-full transition-all" style={{ width:`${score*100}%`, background:score>0.6?'#1D9E75':score>0.4?'#B8860B':'#9e9b93' }} />
+                <div className="flex justify-between text-[12px] mb-1"><span><EraTag era={era} /></span><span style={{ color: 'var(--color-muted)' }}>{Math.round(score * 100)}%</span></div>
+                <div className="h-1.5 rounded-full" style={{ background: 'var(--color-border)' }}>
+                  <div className="h-1.5 rounded-full transition-all" style={{ width: `${score * 100}%`, background: score > 0.6 ? '#1D9E75' : score > 0.4 ? '#B8860B' : '#9e9b93' }} />
                 </div>
               </div>
             ))}
           </div>
         </div>
       )}
-      {topGems.length>0 && (
-        <div className="rounded-xl border p-4" style={{ borderColor:'var(--color-border)' }}>
-          <p className="text-[11px] font-medium uppercase tracking-wider mb-3" style={{ color:'var(--color-muted)' }}>Gemstone preferences</p>
+      {topGems.length > 0 && (
+        <div className="rounded-xl border p-4" style={{ borderColor: 'var(--color-border)' }}>
+          <p className="text-[11px] font-medium uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>Gemstone preferences</p>
           <div className="grid grid-cols-2 gap-2">
-            {topGems.map(([gem,score])=>(
+            {topGems.map(([gem, score]) => (
               <div key={gem} className="flex items-center justify-between text-[12px]">
                 <span className="capitalize">{gem}</span>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-20 h-1.5 rounded-full" style={{ background:'var(--color-border)' }}>
-                    <div className="h-1.5 rounded-full" style={{ width:`${score*100}%`, background:score>0.6?'#1D9E75':'#9e9b93' }} />
+                  <div className="w-20 h-1.5 rounded-full" style={{ background: 'var(--color-border)' }}>
+                    <div className="h-1.5 rounded-full" style={{ width: `${score * 100}%`, background: score > 0.6 ? '#1D9E75' : '#9e9b93' }} />
                   </div>
-                  <span style={{ color:'var(--color-muted)' }}>{Math.round(score*100)}%</span>
+                  <span style={{ color: 'var(--color-muted)' }}>{Math.round(score * 100)}%</span>
                 </div>
               </div>
             ))}
           </div>
         </div>
       )}
-      {profile.likedKeywords.length>0 && (
-        <div className="rounded-xl border p-4" style={{ borderColor:'var(--color-border)' }}>
-          <p className="text-[11px] font-medium uppercase tracking-wider mb-3" style={{ color:'var(--color-muted)' }}>Keywords from saves</p>
+      {profile.likedKeywords.length > 0 && (
+        <div className="rounded-xl border p-4" style={{ borderColor: 'var(--color-border)' }}>
+          <p className="text-[11px] font-medium uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>Keywords from saves</p>
           <div className="flex flex-wrap gap-1.5">
-            {profile.likedKeywords.slice(0,20).map(kw=>(
-              <span key={kw} className="px-2 py-0.5 rounded-full text-[11px]" style={{ background:'var(--color-surface)', color:'var(--color-text)' }}>{kw}</span>
+            {profile.likedKeywords.slice(0, 20).map(kw => (
+              <span key={kw} className="px-2 py-0.5 rounded-full text-[11px]" style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }}>{kw}</span>
             ))}
           </div>
         </div>
       )}
-      {profile.totalInteractions<10 && (
-        <p className="text-[12px] text-center" style={{ color:'var(--color-muted)' }}>The more you save and pass in Finds, the better this gets.</p>
+      {profile.totalInteractions < 10 && (
+        <p className="text-[12px] text-center" style={{ color: 'var(--color-muted)' }}>The more you save and pass in Finds, the better this gets.</p>
       )}
     </div>
   )
 }
+
+// ─── ROOT ─────────────────────────────────────────────────────────────────────
 
 type Tab = 'map' | 'finds' | 'searches' | 'profile'
 
@@ -367,7 +603,7 @@ export default function Home() {
   const [newCount, setNewCount] = useState(0)
 
   useEffect(() => {
-    getFinds().then(d => setNewCount((d.length>0?d:SEED_FINDS).filter(f=>f.status==='New').length))
+    getFinds().then(d => setNewCount((d.length > 0 ? d : SEED_FINDS).filter(f => f.status === 'New').length))
   }, [])
 
   const tabs = [
@@ -383,43 +619,43 @@ export default function Home() {
         <div className="flex items-center gap-3">
           <a href="https://instagram.com/ohmagpie" target="_blank" rel="noreferrer"
             className="flex-shrink-0 rounded-lg overflow-hidden block"
-            style={{ width:44, height:44, background:'#000' }} title="@ohmagpie on Instagram">
-            <img src="/logo.png" alt="OhMagpie" style={{ width:44, height:44, objectFit:'cover' }} />
+            style={{ width: 44, height: 44, background: '#000' }} title="@ohmagpie on Instagram">
+            <img src="/logo.png" alt="OhMagpie" style={{ width: 44, height: 44, objectFit: 'cover' }} />
           </a>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-[17px] font-medium">OhMagpie</h1>
               <a href="https://instagram.com/ohmagpie" target="_blank" rel="noreferrer"
                 className="text-[11px] flex items-center gap-1 px-2 py-0.5 rounded-full border hover:opacity-70 transition-opacity"
-                style={{ borderColor:'var(--color-border)', color:'var(--color-muted)', textDecoration:'none' }}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none"/></svg>
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-muted)', textDecoration: 'none' }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" /></svg>
                 @ohmagpie
               </a>
             </div>
-            <p className="text-[11px] mt-0.5" style={{ color:'var(--color-muted)' }}>TreasureHunter · 28 shops · live</p>
+            <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-muted)' }}>TreasureHunter · 28 shops · live</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />
-          <span className="text-[11px]" style={{ color:'var(--color-muted)' }}>Live</span>
+          <span className="text-[11px]" style={{ color: 'var(--color-muted)' }}>Live</span>
         </div>
       </div>
-      <div className="flex gap-1 pb-3.5 border-b mb-4" style={{ borderColor:'var(--color-border)' }}>
+      <div className="flex gap-1 pb-3.5 border-b mb-4" style={{ borderColor: 'var(--color-border)' }}>
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className="relative px-3.5 py-1.5 rounded-lg text-[13px] transition-colors"
-            style={{ background: tab===t.id?'var(--color-surface)':'transparent', color: tab===t.id?'var(--color-text)':'var(--color-muted)', fontWeight: tab===t.id?500:400 }}>
+            style={{ background: tab === t.id ? 'var(--color-surface)' : 'transparent', color: tab === t.id ? 'var(--color-text)' : 'var(--color-muted)', fontWeight: tab === t.id ? 500 : 400 }}>
             {t.label}
-            {t.badge!==undefined && t.badge>0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] flex items-center justify-center text-white" style={{ background:'#1D9E75' }}>{t.badge}</span>
+            {t.badge !== undefined && t.badge > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] flex items-center justify-center text-white" style={{ background: '#1D9E75' }}>{t.badge}</span>
             )}
           </button>
         ))}
       </div>
-      {tab==='map'      && <MapPanel />}
-      {tab==='finds'    && <FindsPanel />}
-      {tab==='searches' && <SearchesPanel />}
-      {tab==='profile'  && <ProfilePanel />}
+      {tab === 'map'      && <MapPanel />}
+      {tab === 'finds'    && <FindsPanel />}
+      {tab === 'searches' && <SearchesPanel />}
+      {tab === 'profile'  && <ProfilePanel />}
     </main>
   )
 }
