@@ -381,8 +381,33 @@ function SearchesPanel() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [runningId, setRunningId] = useState<number | null>(null)
+  const [runResult, setRunResult] = useState<{ id: number; searched: number; new: number } | null>(null)
 
   useEffect(() => { getSearches().then(d => { setSearches(d); setLoading(false) }) }, [])
+
+  const handleRun = async (id: number) => {
+    setRunningId(id)
+    setRunResult(null)
+    try {
+      const res = await fetch('/api/searches/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ searchId: id }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setRunResult({ id, searched: data.searched, new: data.new })
+        setSearches(prev => prev.map(s => s.id === id
+          ? { ...s, lastRun: new Date().toLocaleDateString(), resultsToday: (s.resultsToday ?? 0) + data.new }
+          : s
+        ))
+      } else {
+        alert(data.error || 'Search failed')
+      }
+    } catch { alert('Search request failed') }
+    finally { setRunningId(null) }
+  }
 
   const handleToggle = async (id: number, active: boolean) => {
     setSearches(prev => prev.map(s => s.id === id ? { ...s, active } : s))
@@ -481,11 +506,24 @@ function SearchesPanel() {
                   ))}
                 </div>
 
+                {runResult?.id === s.id && (
+                  <div className="mb-2.5 px-3 py-2 rounded-lg text-[11px] bg-green-50 text-green-700">
+                    Found {runResult.searched} listings — {runResult.new} new added to Finds
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3 text-[11px]" style={{ color: 'var(--color-muted)' }}>
                   <span className="font-medium" style={{ color: 'var(--color-text)' }}>£{s.minPrice}–£{s.maxPrice}</span>
                   <span>{s.platforms.join(', ')}</span>
                   {s.lastRun && <span>{s.lastRun}</span>}
                   <div className="ml-auto flex gap-3">
+                    <button
+                      onClick={() => handleRun(s.id)}
+                      disabled={runningId === s.id}
+                      className="cursor-pointer disabled:opacity-50"
+                      style={{ color: '#1D9E75', fontWeight: 500 }}>
+                      {runningId === s.id ? 'Searching…' : 'Run now'}
+                    </button>
                     <button onClick={() => setEditingId(s.id)} style={{ color: '#1D9E75' }}>Edit</button>
                     <button onClick={() => handleDelete(s.id)} style={{ color: 'var(--color-muted)' }}>Delete</button>
                   </div>
