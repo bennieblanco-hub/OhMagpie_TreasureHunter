@@ -78,12 +78,16 @@ export async function POST(req: NextRequest) {
       ? 'https://api.ebay.com/buy/browse/v1/item_summary/search'
       : 'https://api.sandbox.ebay.com/buy/browse/v1/item_summary/search'
 
-    // Build query — combine keywords with OR for broader matching
-    const query = keywords.join(' ')
+    // Build a targeted antique jewellery query
+    // Prefix with "antique vintage" to bias toward older pieces,
+    // and use specific jewellery subcategories to exclude watches/modern
+    const userQuery = keywords.join(' ')
+    const query = `(antique,vintage) ${userQuery}`
 
+    // eBay category 10321 = Vintage & Antique Jewellery
     const params = new URLSearchParams({
       q: query,
-      category_ids: '281',  // Jewellery & Watches
+      category_ids: '10321',
       filter: buildFilter(minPrice, maxPrice),
       sort: 'newlyListed',
       limit: '50',
@@ -129,6 +133,8 @@ function buildFilter(minPrice?: number, maxPrice?: number): string {
   const filters: string[] = [
     'deliveryCountry:GB',
     'itemLocationCountry:GB',
+    // Pre-owned only — excludes new/costume/reproduction
+    'conditions:{USED|VERY_GOOD|GOOD|ACCEPTABLE}',
   ]
 
   if (minPrice != null && minPrice > 0) {
