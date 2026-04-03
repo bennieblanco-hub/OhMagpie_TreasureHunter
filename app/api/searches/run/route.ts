@@ -41,6 +41,9 @@ export async function POST(req: NextRequest) {
 
     const newFinds = results.filter(r => r.url && !existingUrls.has(r.url))
 
+    let insertError: string | null = null
+    let inserted = 0
+
     if (newFinds.length > 0) {
       const rows = newFinds.map(f => ({
         title:       f.title,
@@ -57,19 +60,27 @@ export async function POST(req: NextRequest) {
         condition:   f.condition,
       }))
 
-      const { error: insertErr } = await sb.from('finds').insert(rows)
-      if (insertErr) console.error('Insert finds error:', insertErr)
+      const { data: insertData, error: insertErr } = await sb.from('finds').insert(rows).select('id')
+      if (insertErr) {
+        console.error('Insert finds error:', insertErr)
+        insertError = insertErr.message
+      } else {
+        inserted = insertData?.length ?? 0
+      }
     }
 
     await sb.from('searches').update({
       last_run: new Date().toISOString(),
-      results_today: (search.results_today ?? 0) + newFinds.length,
+      results_today: (search.results_today ?? 0) + inserted,
     }).eq('id', searchId)
 
     return NextResponse.json({
       searched: results.length,
-      new: newFinds.length,
+      new: inserted,
       duplicates: results.length - newFinds.length,
+      filtered: newFinds.length,
+      ...(insertError && { insertError }),
+      ...(existingUrls.size > 0 && { existingCount: existingUrls.size }),
     })
   } catch (err) {
     console.error('Search run failed:', err)

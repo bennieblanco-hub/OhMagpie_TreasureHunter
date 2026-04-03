@@ -382,7 +382,7 @@ function SearchesPanel() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [runningId, setRunningId] = useState<number | null>(null)
-  const [runResult, setRunResult] = useState<{ id: number; searched: number; new: number } | null>(null)
+  const [runResult, setRunResult] = useState<{ id: number; searched: number; new: number; insertError?: string } | null>(null)
 
   useEffect(() => { getSearches().then(d => { setSearches(d); setLoading(false) }) }, [])
 
@@ -397,7 +397,7 @@ function SearchesPanel() {
       })
       const data = await res.json()
       if (res.ok) {
-        setRunResult({ id, searched: data.searched, new: data.new })
+        setRunResult({ id, searched: data.searched, new: data.new, insertError: data.insertError })
         setSearches(prev => prev.map(s => s.id === id
           ? { ...s, lastRun: new Date().toLocaleDateString(), resultsToday: (s.resultsToday ?? 0) + data.new }
           : s
@@ -507,8 +507,10 @@ function SearchesPanel() {
                 </div>
 
                 {runResult?.id === s.id && (
-                  <div className="mb-2.5 px-3 py-2 rounded-lg text-[11px] bg-green-50 text-green-700">
-                    Found {runResult.searched} listings — {runResult.new} new added to Finds
+                  <div className={`mb-2.5 px-3 py-2 rounded-lg text-[11px] ${runResult.insertError ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                    {runResult.insertError
+                      ? `Found ${runResult.searched} listings but insert failed: ${runResult.insertError}`
+                      : `Found ${runResult.searched} listings — ${runResult.new} new added to Finds`}
                   </div>
                 )}
 
