@@ -190,31 +190,29 @@ function FindsPanel() {
         </div>
         <div className="text-[11px]" style={{ color: 'var(--color-muted)' }}>Click image to zoom</div>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {filtered.map(find => (
-          <div key={find.id} className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}>
-            <div className="relative aspect-video overflow-hidden cursor-zoom-in" onClick={() => setLightbox(find)} style={{ background: 'var(--color-surface)' }}>
+          <div key={find.id} className="rounded-lg border overflow-hidden" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}>
+            <div className="relative aspect-square overflow-hidden cursor-zoom-in" onClick={() => setLightbox(find)} style={{ background: 'var(--color-surface)' }}>
               <img src={find.imageUrl} alt={find.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
-              <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+              <div className="absolute top-1.5 right-1.5 flex flex-col gap-0.5 items-end">
                 <StatusBadge status={find.status} />
                 {find.interestScore !== undefined && <ScorePill score={find.interestScore} />}
               </div>
             </div>
-            <div className="p-3">
-              <div className="text-[13px] font-medium leading-snug mb-1.5">{find.title}</div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-[15px] font-medium">£{find.price}</span>
-                <EraTag era={find.era} />
-                <span className="text-[10px] ml-auto" style={{ color: 'var(--color-muted)' }}>{find.platform}</span>
+            <div className="p-2">
+              <div className="text-[11px] font-medium leading-snug mb-1 line-clamp-2">{find.title}</div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="text-[13px] font-medium">£{find.price}</span>
+                <span className="text-[9px] ml-auto" style={{ color: 'var(--color-muted)' }}>{find.platform}</span>
               </div>
-              {find.interestReason && <p className="text-[11px] mb-2.5 italic" style={{ color: 'var(--color-muted)' }}>{find.interestReason}</p>}
-              <div className="flex gap-1.5">
+              <div className="flex gap-1">
                 {(['save', 'watch', 'pass'] as const).map(action => {
                   const isActive = (action === 'save' && find.status === 'Saved') || (action === 'watch' && find.status === 'Watching') || (action === 'pass' && find.status === 'Pass')
                   const c: Record<string, string> = { save: '#1D9E75', watch: '#B8860B', pass: '#9e9b93' }
                   return (
                     <button key={action} onClick={() => handleAction(find, action)}
-                      className="flex-1 py-1 rounded-lg text-[11px] border transition-colors"
+                      className="flex-1 py-0.5 rounded text-[10px] border transition-colors"
                       style={{ borderColor: isActive ? c[action] : 'var(--color-border)', background: isActive ? `${c[action]}18` : 'transparent', color: isActive ? c[action] : 'var(--color-muted)', fontWeight: isActive ? 500 : 400 }}>
                       {action.charAt(0).toUpperCase() + action.slice(1)}
                     </button>

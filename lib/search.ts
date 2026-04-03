@@ -89,7 +89,7 @@ export async function searchEbay(
     category_ids: '10321',
     filter: filters.join(','),
     sort: 'newlyListed',
-    limit: '50',
+    limit: '200',
   })
 
   const res = await fetch(`${baseUrl}?${params}`, {
@@ -138,7 +138,7 @@ export async function searchEtsy(
     taxonomy_id: '1194',
     sort_on: 'created',
     sort_order: 'desc',
-    limit: '50',
+    limit: '200',
     shop_location: 'gb',
   })
 
